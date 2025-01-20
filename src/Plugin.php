@@ -149,4 +149,32 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
             throw $e;
         }
     }
+
+    public function getConfiguration(): PluginConfig
+    {
+        return $this->configuration ?? new PluginConfig();
+    }
+
+    public function writeConfiguration(PluginConfig $config): void
+    {
+        try {
+            $config->validate();
+            
+            $data = [
+                'enabled' => $config->isEnabled(),
+                'url' => $config->getURL(),
+            ];
+
+            $configPath = sprintf('%s/%s', $this->composer->getConfig()->get('home'), static::CONFIG_FILE);
+            if (file_put_contents($configPath, json_encode($data, JSON_PRETTY_PRINT)) === false) {
+                throw new RuntimeException('Failed to write configuration');
+            }
+
+            $this->configuration = $config;
+            static::$enabled = $config->isEnabled();
+        } catch (Exception $e) {
+            $this->io->writeError(sprintf('<error>Failed to write configuration: %s</error>', $e->getMessage()));
+            throw $e;
+        }
+    }
 }

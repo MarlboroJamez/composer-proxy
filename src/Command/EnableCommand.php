@@ -5,17 +5,24 @@ declare(strict_types=1);
 namespace Molo\ComposerProxy\Command;
 
 use Composer\Command\BaseCommand;
+use Molo\ComposerProxy\Plugin;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Molo\ComposerProxy\Config\PluginConfig;
-use Molo\ComposerProxy\Plugin;
 
 /**
  * Command to enable the proxy
  */
 class EnableCommand extends BaseCommand
 {
+    protected Plugin $plugin;
+
+    public function __construct(Plugin $plugin)
+    {
+        parent::__construct();
+        $this->plugin = $plugin;
+    }
+
     /**
      * Configure the command
      *
@@ -23,14 +30,10 @@ class EnableCommand extends BaseCommand
      */
     protected function configure(): void
     {
-        $this->setName('molo:proxy-enable')
-            ->setDescription('Enable the composer proxy')
-            ->setHelp('This command enables the composer proxy')
-            ->addArgument(
-                'url',
-                InputArgument::REQUIRED,
-                'The URL of the composer proxy'
-            );
+        $this
+            ->setName('molo:proxy-enable')
+            ->setDescription('Enables the Composer proxy plugin')
+            ->addArgument('url', InputArgument::OPTIONAL, 'Sets the URL to your proxy instance');
     }
 
     /**
@@ -43,52 +46,21 @@ class EnableCommand extends BaseCommand
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $url = $input->getArgument('url');
-        $output->writeln(sprintf('Enabling composer proxy with URL: %s', $url));
+        if ($url !== null) {
+            $output->writeln(sprintf('Enabling composer proxy with URL: %s', $url));
+        }
 
-        $config = new PluginConfig();
+        // Update configuration
+        $config = $this->plugin->getConfiguration();
         $config->setEnabled(true);
-        $config->setProxyUrl($url);
-
-        $pluginManager = $this->getComposer()->getPluginManager();
-        $plugins = $pluginManager->getPlugins();
-        
-        /** @var Plugin|null $plugin */
-        $plugin = null;
-        foreach ($plugins as $p) {
-            if ($p instanceof Plugin) {
-                $plugin = $p;
-                break;
-            }
-        }
-        
-        if (!$plugin) {
-            $output->writeln('<error>Could not find the composer proxy plugin</error>');
-            return 1;
+        if ($url !== null) {
+            $config->setURL($url);
         }
 
-        $plugin->writeConfiguration($config);
+        // Write new configuration
+        $this->plugin->writeConfiguration($config);
 
-        $output->writeln('Composer proxy enabled successfully');
+        $output->writeln('Composer proxy is now <info>enabled</info>.');
         return 0;
-    }
-
-    /**
-     * Get the plugin instance
-     *
-     * @return Plugin|null
-     */
-    private function getPlugin(): ?Plugin
-    {
-        $composer = $this->getComposer();
-        $pluginManager = $composer->getPluginManager();
-        $plugins = $pluginManager->getPlugins();
-
-        foreach ($plugins as $plugin) {
-            if ($plugin instanceof Plugin) {
-                return $plugin;
-            }
-        }
-
-        return null;
     }
 }

@@ -6,6 +6,11 @@ namespace Molo\ComposerProxy\Config;
 
 use RuntimeException;
 
+use function filter_var;
+use function rtrim;
+
+use const FILTER_VALIDATE_URL;
+
 /**
  * Configuration class for the Composer Proxy plugin
  */
@@ -13,7 +18,6 @@ class PluginConfig
 {
     protected bool $enabled = false;
     protected ?string $url = null;
-    protected ?RemoteConfig $remoteConfig = null;
 
     /**
      * @return bool
@@ -49,22 +53,6 @@ class PluginConfig
         } else {
             $this->url = rtrim($url, '/');
         }
-    }
-
-    /**
-     * @param RemoteConfig|null $config
-     */
-    public function setRemoteConfig(?RemoteConfig $config): void
-    {
-        $this->remoteConfig = $config;
-    }
-
-    /**
-     * @return RemoteConfig|null
-     */
-    public function getRemoteConfig(): ?RemoteConfig
-    {
-        return $this->remoteConfig;
     }
 
     /**
