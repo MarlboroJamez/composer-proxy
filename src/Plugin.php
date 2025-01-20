@@ -19,8 +19,11 @@ use Molo\ComposerProxy\Config\PluginConfig;
 use Molo\ComposerProxy\Config\PluginConfigReader;
 use Molo\ComposerProxy\Config\PluginConfigWriter;
 use Molo\ComposerProxy\Config\RemoteConfig;
+use Molo\ComposerProxy\Http\ParallelProxyDownloader;
 use Molo\ComposerProxy\Url\UrlMapper;
 use RuntimeException;
+use Symfony\Component\Console\Output\ConsoleOutput;
+use Symfony\Component\Console\Output\OutputInterface;
 use UnexpectedValueException;
 
 use function is_array;
@@ -37,25 +40,25 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
     protected IOInterface $io;
     protected string $configPath;
     protected PluginConfig $configuration;
-    protected ?UrlMapper $urlMapper = null;
-    protected ?HttpDownloader $httpDownloader = null;
+    protected UrlMapper $urlMapper;
+    protected ?ParallelProxyDownloader $downloader = null;
+    protected ?OutputInterface $output = null;
 
     public function activate(Composer $composer, IOInterface $io): void
     {
         $this->composer = $composer;
         $this->io = $io;
-        $this->httpDownloader = $composer->getLoop()->getHttpDownloader();
+        $this->output = new ConsoleOutput();
 
         $this->initialize();
     }
 
     public function deactivate(Composer $composer, IOInterface $io): void
     {
+        if ($this->downloader !== null) {
+            $this->downloader->wait();
+        }
         static::$enabled = false;
-    }
-
-    public function uninstall(Composer $composer, IOInterface $io): void
-    {
     }
 
     private function initialize(): void
@@ -82,6 +85,33 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
         }
 
         $this->urlMapper = new UrlMapper($url, $remoteConfig->getMirrors());
+
+        // Configure the composer instance
+        $this->composer->getConfig()->merge([
+            'config' => [
+                'secure-http' => true,
+                'github-protocols' => ['https'],
+                'gitlab-protocol' => 'https',
+            ]
+        ]);
+
+        // Create and configure the parallel downloader
+        $this->downloader = new ParallelProxyDownloader(
+            $this->urlMapper,
+            $this->io,
+            $this->composer->getConfig(),
+            ['ssl' => ['verify_peer' => true]]
+        );
+
+        // Replace the HTTP downloader
+        $this->composer->getLoop()->setHttpDownloader($this->downloader);
+    }
+
+    public function uninstall(Composer $composer, IOInterface $io): void
+    {
+        if ($this->downloader !== null) {
+            $this->downloader->wait();
+        }
     }
 
     public function getCapabilities(): array
@@ -132,29 +162,26 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
 
     protected function getRemoteConfig(string $url): RemoteConfig
     {
-        if ($this->httpDownloader === null) {
-            throw new RuntimeException('HTTP downloader not initialized');
+        if ($this->downloader === null) {
+            $this->downloader = new ParallelProxyDownloader(
+                $this->urlMapper ?? new UrlMapper($url, []),
+                $this->io,
+                $this->composer->getConfig(),
+                ['ssl' => ['verify_peer' => true]]
+            );
         }
 
         $remoteConfigUrl = sprintf(static::REMOTE_CONFIG_URL, $url);
-        
-        try {
-            $response = $this->httpDownloader->get($remoteConfigUrl);
-            
-            if ($response->getStatusCode() !== 200) {
-                throw new RuntimeException(
-                    sprintf('Unexpected status code %d for URL %s', $response->getStatusCode(), $remoteConfigUrl)
-                );
-            }
-
-            $remoteConfigData = $response->decodeJson();
-            if (!is_array($remoteConfigData)) {
-                throw new UnexpectedValueException('Remote configuration is formatted incorrectly');
-            }
-
-            return RemoteConfig::fromArray($remoteConfigData);
-        } catch (Exception $e) {
-            throw new RuntimeException(sprintf('Failed to fetch remote config: %s', $e->getMessage()));
+        $response = $this->downloader->get($remoteConfigUrl);
+        if ($response->getStatusCode() !== 200) {
+            throw new RuntimeException(
+                sprintf('Unexpected status code %d for URL %s', $response->getStatusCode(), $remoteConfigUrl)
+            );
         }
+        $remoteConfigData = $response->decodeJson();
+        if (!is_array($remoteConfigData)) {
+            throw new UnexpectedValueException('Remote configuration is formatted incorrectly');
+        }
+        return RemoteConfig::fromArray($remoteConfigData);
     }
 }
