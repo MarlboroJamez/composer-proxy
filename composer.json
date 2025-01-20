@@ -1,0 +1,41 @@
+{
+    "name": "molo/composer-proxy",
+    "description": "A Composer plugin for proxy management",
+    "type": "composer-plugin",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "James Williams",
+            "email": "jameswilliamsmdl@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^7.4 || ^8.0",
+        "composer-plugin-api": "^2.0",
+        "gmta/composer-velocita": "*"
+    },
+    "require-dev": {
+        "composer/composer": "^2.0",
+        "phpunit/phpunit": "^9.0",
+        "squizlabs/php_codesniffer": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Molo\\ComposerProxy\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Molo\\ComposerProxy\\Test\\": "tests/"
+        }
+    },
+    "extra": {
+        "class": "Molo\\ComposerProxy\\Plugin"
+    },
+    "repositories": {
+        "local": {
+            "type": "path",
+            "url": "."
+        }
+    }
+}

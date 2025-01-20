@@ -1,0 +1,24 @@
+{
+    "mirrors": [
+        {
+            "url": "//packagist.org",
+            "path": "mirror/packagist"
+        },
+        {
+            "url": "//repo.packagist.org",
+            "path": "mirror/packagist"
+        },
+        {
+            "url": "//api.github.com",
+            "path": "mirror/github"
+        },
+        {
+            "url": "//codeload.github.com",
+            "path": "mirror/github-codeload"
+        },
+        {
+            "url": "//github.com",
+            "path": "mirror/github-codeload"
+        }
+    ]
+}
