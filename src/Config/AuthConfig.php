@@ -29,10 +29,13 @@ class AuthConfig
         $projectAuthFile = $projectDir . '/auth.json';
         
         if (file_exists($projectAuthFile)) {
-            $this->projectAuth = json_decode(file_get_contents($projectAuthFile), true);
-            $this->authSource = 'project';
-            $this->io->write('  <info>✓</info> Using authentication from project auth.json', true, IOInterface::VERBOSE);
-            return;
+            $auth = json_decode(file_get_contents($projectAuthFile), true);
+            if ($auth && isset($auth['http-basic']) && !empty($auth['http-basic'])) {
+                $this->projectAuth = $auth;
+                $this->authSource = 'project';
+                $this->io->write('  <info>✓</info> Using authentication from project auth.json', true, IOInterface::VERBOSE);
+                return;
+            }
         }
 
         // Try composer home directory next
@@ -40,9 +43,12 @@ class AuthConfig
         $globalAuthFile = $composerHome . '/auth.json';
         
         if (file_exists($globalAuthFile)) {
-            $this->projectAuth = json_decode(file_get_contents($globalAuthFile), true);
-            $this->authSource = 'global';
-            $this->io->write('  <info>✓</info> Using authentication from global auth.json', true, IOInterface::VERBOSE);
+            $auth = json_decode(file_get_contents($globalAuthFile), true);
+            if ($auth && isset($auth['http-basic']) && !empty($auth['http-basic'])) {
+                $this->projectAuth = $auth;
+                $this->authSource = 'global';
+                $this->io->write('  <info>✓</info> Using authentication from global auth.json', true, IOInterface::VERBOSE);
+            }
         }
     }
 
@@ -97,13 +103,6 @@ class AuthConfig
             }
         }
 
-        if (empty($headers) && $this->io->isVeryVerbose()) {
-            $this->io->write(sprintf(
-                '  <warning>!</warning> No authentication found for %s',
-                $host
-            ), true, IOInterface::VERBOSE);
-        }
-
         return $headers;
     }
 
@@ -128,7 +127,21 @@ class AuthConfig
             return false;
         }
 
-        return isset($this->projectAuth['http-basic'][$host]) || 
-               isset($this->config->get('http-basic')[$host]);
+        // Check if we have valid credentials in project auth
+        if ($this->projectAuth && isset($this->projectAuth['http-basic'][$host])) {
+            $auth = $this->projectAuth['http-basic'][$host];
+            if (!empty($auth['username']) && !empty($auth['password'])) {
+                return true;
+            }
+        }
+
+        // Check if we have valid credentials in global config
+        $authConfig = $this->config->get('http-basic') ?? [];
+        if (isset($authConfig[$host])) {
+            $auth = $authConfig[$host];
+            return !empty($auth['username']) && !empty($auth['password']);
+        }
+
+        return false;
     }
 }
