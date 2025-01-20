@@ -9,6 +9,9 @@ use UnexpectedValueException;
 use function array_key_exists;
 use function rtrim;
 use function sprintf;
+use function str_replace;
+use function str_starts_with;
+use function trim;
 
 class MirrorMapping
 {
@@ -16,17 +19,44 @@ class MirrorMapping
     protected string $path;
 
     /**
-     * @param array{url?: string, path?: string} $data
+     * @param array<string, mixed> $data
      */
     public static function fromArray(array $data): MirrorMapping
     {
-        if (!array_key_exists('url', $data) || !array_key_exists('path', $data)) {
-            throw new UnexpectedValueException('Missing `url` or `path` key in mirror mapping');
+        $mapping = new MirrorMapping();
+
+        // Handle different URL keys
+        $url = null;
+        foreach (['url', 'URL', 'source', 'SOURCE', 'origin'] as $key) {
+            if (array_key_exists($key, $data) && is_string($data[$key])) {
+                $url = $data[$key];
+                break;
+            }
         }
 
-        $mapping = new MirrorMapping();
-        $mapping->url = $data['url'];
-        $mapping->path = $data['path'];
+        // Handle different path keys
+        $path = null;
+        foreach (['path', 'PATH', 'target', 'TARGET', 'destination'] as $key) {
+            if (array_key_exists($key, $data) && is_string($data[$key])) {
+                $path = $data[$key];
+                break;
+            }
+        }
+
+        if ($url === null || $path === null) {
+            throw new UnexpectedValueException('Missing URL or path in mirror mapping');
+        }
+
+        // Clean up URL
+        $url = str_replace(['http://', 'https://'], '//', trim($url));
+        if (!str_starts_with($url, '//')) {
+            $url = '//' . $url;
+        }
+        $mapping->url = $url;
+
+        // Clean up path
+        $mapping->path = trim($path, '/');
+
         return $mapping;
     }
 
@@ -37,7 +67,7 @@ class MirrorMapping
 
     public function getNormalizedUrl(): string
     {
-        return sprintf('%s/', rtrim($this->url, '/'));
+        return sprintf('https:%s/', rtrim($this->url, '/'));
     }
 
     public function getPath(): string
