@@ -22,7 +22,7 @@ class DisableCommand extends BaseCommand
      */
     protected function configure(): void
     {
-        $this->setName('proxy:disable')
+        $this->setName('molo:proxy-disable')
             ->setDescription('Disable the composer proxy')
             ->setHelp('This command disables the composer proxy');
     }

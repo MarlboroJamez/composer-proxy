@@ -23,7 +23,7 @@ class EnableCommand extends BaseCommand
      */
     protected function configure(): void
     {
-        $this->setName('proxy:enable')
+        $this->setName('molo:proxy-enable')
             ->setDescription('Enable the composer proxy')
             ->setHelp('This command enables the composer proxy')
             ->addArgument(
