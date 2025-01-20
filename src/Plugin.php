@@ -1,4 +1,4 @@
-git stat<?php
+<?php
 
 declare(strict_types=1);
 
@@ -16,6 +16,7 @@ use Exception;
 use LogicException;
 use Molo\ComposerProxy\Command\CommandProvider;
 use Molo\ComposerProxy\Composer\ComposerFactory;
+use Molo\ComposerProxy\Config\AuthConfig;
 use Molo\ComposerProxy\Config\PluginConfig;
 use Molo\ComposerProxy\Config\PluginConfigReader;
 use Molo\ComposerProxy\Config\PluginConfigWriter;
@@ -43,6 +44,7 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
     protected UrlMapper $urlMapper;
     protected ?HttpDownloader $httpDownloader = null;
     protected ?OutputInterface $output = null;
+    protected ?AuthConfig $authConfig = null;
 
     public function activate(Composer $composer, IOInterface $io): void
     {
@@ -50,6 +52,7 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
         $this->io = $io;
         $this->output = new ConsoleOutput();
         $this->httpDownloader = $composer->getLoop()->getHttpDownloader();
+        $this->authConfig = new AuthConfig($composer->getConfig(), $io);
 
         $this->initialize();
     }
@@ -73,6 +76,9 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
         if ($url === null) {
             throw new LogicException('Proxy enabled but no URL set');
         }
+
+        // Configure authentication for the proxy URL
+        $this->authConfig?->configureAuthentication($url);
 
         try {
             $remoteConfig = $this->getRemoteConfig($url);
@@ -123,13 +129,23 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
 
         $originalUrl = $event->getProcessedUrl();
         $mappedUrl = $this->urlMapper->applyMappings($originalUrl);
+        
         if ($mappedUrl !== $originalUrl) {
+            // Add authentication headers if needed
+            if ($this->authConfig !== null) {
+                $headers = $this->authConfig->getAuthHeaders($mappedUrl);
+                foreach ($headers as $header) {
+                    $event->setOption('http', ['header' => [$header]]);
+                }
+            }
+
             $this->io->write(
                 sprintf('%s(url=%s): mapped to %s', __METHOD__, $originalUrl, $mappedUrl),
                 true,
                 IOInterface::DEBUG
             );
         }
+        
         $event->setProcessedUrl($mappedUrl);
     }
 
@@ -151,7 +167,17 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
         }
 
         $remoteConfigUrl = sprintf(static::REMOTE_CONFIG_URL, $url);
-        $response = $this->httpDownloader->get($remoteConfigUrl);
+        
+        // Add authentication headers for the remote config request
+        $options = [];
+        if ($this->authConfig !== null) {
+            $headers = $this->authConfig->getAuthHeaders($remoteConfigUrl);
+            if (!empty($headers)) {
+                $options['headers'] = $headers;
+            }
+        }
+
+        $response = $this->httpDownloader->get($remoteConfigUrl, $options);
         if ($response->getStatusCode() !== 200) {
             throw new RuntimeException(
                 sprintf('Unexpected status code %d for URL %s', $response->getStatusCode(), $remoteConfigUrl)
