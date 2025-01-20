@@ -14,6 +14,7 @@ use Composer\Plugin\PreFileDownloadEvent;
 use Exception;
 use LogicException;
 use Molo\ComposerProxy\Command\CommandProvider;
+use Molo\ComposerProxy\Composer\ComposerFactory;
 use Molo\ComposerProxy\Config\PluginConfig;
 use Molo\ComposerProxy\Config\PluginConfigReader;
 use Molo\ComposerProxy\Config\PluginConfigWriter;
@@ -56,7 +57,7 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
 
     private function initialize(): void
     {
-        $this->configPath = sprintf('%s/%s', $this->composer->getConfig()->get('home'), static::CONFIG_FILE);
+        $this->configPath = sprintf('%s/%s', ComposerFactory::getComposerHomeDir(), static::CONFIG_FILE);
         $this->configuration = (new PluginConfigReader())->readOrNew($this->configPath);
 
         static::$enabled = $this->configuration->isEnabled();

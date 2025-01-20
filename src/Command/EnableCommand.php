@@ -30,7 +30,8 @@ class EnableCommand extends BaseCommand
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $url = $input->getArgument('url');
+        $inputAdapter = new InputInterfaceAdapter($input);
+        $url = $inputAdapter->getStringArgument('url');
         if ($url !== null) {
             $output->writeln(sprintf('Enabling composer proxy with URL: %s', $url));
         }
