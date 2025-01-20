@@ -15,11 +15,11 @@ class CommandProvider implements CommandProviderCapability
     protected Plugin $plugin;
 
     /**
-     * @param array{plugin: Plugin} $arguments
+     * @param array{instance: Plugin} $arguments
      */
     public function __construct(array $arguments)
     {
-        $this->plugin = $arguments['plugin'];
+        $this->plugin = $arguments['instance'];
     }
 
     /**

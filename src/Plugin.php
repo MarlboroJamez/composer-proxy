@@ -108,7 +108,7 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
         return [
             ComposerCommandProvider::class => [
                 'class' => CommandProvider::class,
-                'plugin' => $this,
+                'instance' => $this,
             ],
         ];
     }
