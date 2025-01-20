@@ -77,6 +77,18 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
             throw new LogicException('Proxy enabled but no URL set');
         }
 
+        // Check and report authentication status
+        if ($this->authConfig?->hasAuthFor($url)) {
+            $this->io->write('<info>Composer Proxy:</info> Successfully authenticated');
+        } else {
+            $this->io->writeError(
+                sprintf(
+                    '<warning>Composer Proxy:</warning> Authentication required. Please add credentials to auth.json for %s',
+                    parse_url($url, PHP_URL_HOST)
+                )
+            );
+        }
+
         try {
             $remoteConfig = $this->getRemoteConfig($url);
         } catch (Exception $e) {
@@ -137,7 +149,7 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
             }
 
             $this->io->write(
-                sprintf('%s(url=%s): mapped to %s', __METHOD__, $originalUrl, $mappedUrl),
+                sprintf('Composer Proxy: Mapped %s', parse_url($mappedUrl, PHP_URL_HOST)),
                 true,
                 IOInterface::DEBUG
             );

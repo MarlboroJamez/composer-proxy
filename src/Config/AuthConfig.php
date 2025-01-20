@@ -13,6 +13,7 @@ class AuthConfig
     private ComposerConfig $config;
     private IOInterface $io;
     private ?array $projectAuth = null;
+    private ?string $authSource = null;
 
     public function __construct(ComposerConfig $config, IOInterface $io)
     {
@@ -29,6 +30,12 @@ class AuthConfig
         
         if (file_exists($projectAuthFile)) {
             $this->projectAuth = json_decode(file_get_contents($projectAuthFile), true);
+            $this->authSource = 'local';
+            $this->io->write(
+                '<info>Composer Proxy:</info> Found credentials in auth.json',
+                true,
+                IOInterface::VERBOSE
+            );
             return;
         }
 
@@ -38,7 +45,45 @@ class AuthConfig
         
         if (file_exists($globalAuthFile)) {
             $this->projectAuth = json_decode(file_get_contents($globalAuthFile), true);
+            $this->authSource = 'global';
+            $this->io->write(
+                '<info>Composer Proxy:</info> Found credentials in global auth.json',
+                true,
+                IOInterface::VERBOSE
+            );
         }
+    }
+
+    public function hasAuthFor(string $url): bool
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+        if (!$host) {
+            return false;
+        }
+
+        // Check project auth.json
+        if ($this->projectAuth && isset($this->projectAuth['http-basic'][$host])) {
+            $auth = $this->projectAuth['http-basic'][$host];
+            if (!empty($auth['username']) && !empty($auth['password'])) {
+                return true;
+            }
+        }
+
+        // Check global auth config
+        $authConfig = $this->config->get('http-basic') ?? [];
+        if (isset($authConfig[$host])) {
+            $auth = $authConfig[$host];
+            if (!empty($auth['username']) && !empty($auth['password'])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function getAuthSource(): ?string
+    {
+        return $this->authSource;
     }
 
     public function getAuthHeaders(string $url): array
@@ -58,6 +103,13 @@ class AuthConfig
                     'Authorization: Basic %s',
                     base64_encode($auth['username'] . ':' . $auth['password'])
                 );
+                
+                $this->io->write(
+                    sprintf('<info>Composer Proxy:</info> Using credentials for %s', $host),
+                    true,
+                    IOInterface::DEBUG
+                );
+                
                 return $headers;
             }
         }
@@ -70,6 +122,12 @@ class AuthConfig
                 $headers[] = sprintf(
                     'Authorization: Basic %s',
                     base64_encode($auth['username'] . ':' . $auth['password'])
+                );
+                
+                $this->io->write(
+                    sprintf('<info>Composer Proxy:</info> Using credentials for %s', $host),
+                    true,
+                    IOInterface::DEBUG
                 );
             }
         }
