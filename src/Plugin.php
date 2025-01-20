@@ -78,7 +78,8 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
         }
 
         // Check and report authentication status
-        if ($this->authConfig?->hasAuthFor($url)) {
+        $options = $this->authConfig?->getAuthOptions($url) ?? [];
+        if (!empty($options)) {
             $this->io->write('<info>Composer Proxy:</info> Successfully authenticated');
         } else {
             $this->io->writeError(

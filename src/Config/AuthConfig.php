@@ -54,39 +54,7 @@ class AuthConfig
         }
     }
 
-    public function hasAuthFor(string $url): bool
-    {
-        $host = parse_url($url, PHP_URL_HOST);
-        if (!$host) {
-            return false;
-        }
-
-        // Check project auth.json
-        if ($this->projectAuth && isset($this->projectAuth['http-basic'][$host])) {
-            $auth = $this->projectAuth['http-basic'][$host];
-            if (!empty($auth['username']) && !empty($auth['password'])) {
-                return true;
-            }
-        }
-
-        // Check global auth config
-        $authConfig = $this->config->get('http-basic') ?? [];
-        if (isset($authConfig[$host])) {
-            $auth = $authConfig[$host];
-            if (!empty($auth['username']) && !empty($auth['password'])) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    public function getAuthSource(): ?string
-    {
-        return $this->authSource;
-    }
-
-    public function getAuthHeaders(string $url): array
+    private function getAuthHeaders(string $url): array
     {
         $headers = [];
         $host = parse_url($url, PHP_URL_HOST);
