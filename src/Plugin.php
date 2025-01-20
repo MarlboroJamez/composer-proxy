@@ -10,7 +10,6 @@ use Composer\IO\IOInterface;
 use Composer\Plugin\Capable;
 use Composer\Plugin\Capability\CommandProvider as ComposerCommandProvider;
 use Composer\Plugin\PluginInterface;
-use Composer\Plugin\PluginEvents;
 use Composer\Plugin\PreFileDownloadEvent;
 use Composer\Util\HttpDownloader;
 use LogicException;
@@ -205,18 +204,22 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
      */
     public function onPreFileDownload(\Composer\Plugin\PreFileDownloadEvent $event): void
     {
+        if (!self::$enabled || $this->urlMapper === null) {
+            return;
+        }
+
         $originalUrl = $event->getProcessedUrl();
-        $mappedUrl = $this->urlMapper->transformUrl($originalUrl);
+        $newUrl = $this->urlMapper->transformUrl($originalUrl);
         
-        if ($mappedUrl !== $originalUrl) {
+        if ($originalUrl !== $newUrl) {
             $this->io->write(
-                sprintf('%s(url=%s): mapped to %s', __METHOD__, $originalUrl, $mappedUrl),
+                sprintf('%s(url=%s): mapped to %s', __METHOD__, $originalUrl, $newUrl),
                 true,
                 IOInterface::DEBUG
             );
         }
         
-        $event->setProcessedUrl($mappedUrl);
+        $event->setProcessedUrl($newUrl);
     }
 
     /**

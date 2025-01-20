@@ -24,8 +24,8 @@ class UrlMapper
      */
     public function __construct(string $rootUrl, array $mappings)
     {
-        $this->rootUrl = $rootUrl;
         $this->mappings = $mappings;
+        $this->rootUrl = rtrim($rootUrl, '/');
     }
 
     /**
@@ -34,18 +34,18 @@ class UrlMapper
      * @param string $url
      * @return string
      */
-    public function transformUrl(string $url): string
+    public function applyMappings(string $url): string
     {
         $patchedUrl = $this->applyGitHubShortcut($url);
 
         foreach ($this->mappings as $mapping) {
             $prefix = $mapping->getNormalizedUrl();
-            $regex = sprintf('#^https?:%s(?<path>.+)$#i', preg_quote($prefix));
+            $regex = sprintf('#^https?:%s(?<path>.+)$#i', preg_quote($prefix, '#'));
             $matches = [];
             if (preg_match($regex, $patchedUrl, $matches) === 1) {
                 return sprintf(
                     '%s/%s/%s',
-                    rtrim($this->rootUrl, '/'),
+                    $this->rootUrl,
                     trim($mapping->getPath(), '/'),
                     ltrim($matches['path'], '/')
                 );
@@ -53,7 +53,7 @@ class UrlMapper
         }
 
         // If no mirror mapping matches, return original URL
-        return $patchedUrl;
+        return $url;
     }
 
     /**
