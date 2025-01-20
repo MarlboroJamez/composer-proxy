@@ -15,16 +15,10 @@ use function sprintf;
 
 use const JSON_PRETTY_PRINT;
 
-/**
- * Writes plugin configuration to the filesystem
- */
 class PluginConfigWriter
 {
     private PluginConfig $pluginConfig;
 
-    /**
-     * @param PluginConfig $pluginConfig
-     */
     public function __construct(PluginConfig $pluginConfig)
     {
         $this->pluginConfig = $pluginConfig;
@@ -41,12 +35,6 @@ class PluginConfigWriter
         ];
     }
 
-    /**
-     * Write configuration to file
-     *
-     * @param string $path
-     * @return void
-     */
     public function write(string $path): void
     {
         $this->pluginConfig->validate();

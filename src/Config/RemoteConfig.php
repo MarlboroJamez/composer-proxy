@@ -8,9 +8,6 @@ use UnexpectedValueException;
 
 use function array_key_exists;
 
-/**
- * Handles remote configuration from the Composer Proxy server
- */
 class RemoteConfig
 {
     /**
@@ -19,10 +16,7 @@ class RemoteConfig
     protected array $mirrors = [];
 
     /**
-     * Create a RemoteConfig from an array
-     *
      * @param array{mirrors?: array{url?: string, path?: string}[]} $data
-     * @return self
      */
     public static function fromArray(array $data): RemoteConfig
     {

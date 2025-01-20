@@ -19,15 +19,12 @@ use Molo\ComposerProxy\Config\PluginConfig;
 use Molo\ComposerProxy\Config\PluginConfigReader;
 use Molo\ComposerProxy\Config\PluginConfigWriter;
 use Molo\ComposerProxy\Config\RemoteConfig;
-use Molo\ComposerProxy\Http\ProxyHttpDownloader;
 use Molo\ComposerProxy\Url\UrlMapper;
 use RuntimeException;
 use UnexpectedValueException;
 
 use function is_array;
 use function sprintf;
-
-use const PHP_INT_MAX;
 
 class Plugin implements PluginInterface, EventSubscriberInterface, Capable
 {
@@ -39,8 +36,8 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
     protected Composer $composer;
     protected IOInterface $io;
     protected string $configPath;
-    protected ?PluginConfig $configuration = null;
-    protected ?UrlMapper $urlMapper = null;
+    protected PluginConfig $configuration;
+    protected UrlMapper $urlMapper;
 
     public function activate(Composer $composer, IOInterface $io): void
     {
@@ -69,7 +66,6 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
         if ($url === null) {
             throw new LogicException('Proxy enabled but no URL set');
         }
-
         try {
             $remoteConfig = $this->getRemoteConfig($url);
         } catch (Exception $e) {
@@ -79,24 +75,6 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
         }
 
         $this->urlMapper = new UrlMapper($url, $remoteConfig->getMirrors());
-
-        // Configure the composer instance
-        $this->composer->getConfig()->merge([
-            'config' => [
-                'secure-http' => true,
-                'github-protocols' => ['https'],
-                'gitlab-protocol' => 'https',
-            ]
-        ]);
-
-        // Replace the HTTP downloader
-        $this->composer->setDownloader(
-            new ProxyHttpDownloader(
-                $this->urlMapper,
-                $this->io,
-                $this->composer->getConfig()
-            )
-        );
     }
 
     public function uninstall(Composer $composer, IOInterface $io): void
@@ -106,10 +84,7 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
     public function getCapabilities(): array
     {
         return [
-            ComposerCommandProvider::class => [
-                'class' => CommandProvider::class,
-                'instance' => $this,
-            ],
+            ComposerCommandProvider::class => CommandProvider::class,
         ];
     }
 
@@ -119,18 +94,12 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
             return [];
         }
         return [
-            'pre-file-download' => [
-                ['onPreFileDownload', 0]
-            ],
+            'pre-file-download' => ['onPreFileDownload', 0],
         ];
     }
 
     public function onPreFileDownload(PreFileDownloadEvent $event): void
     {
-        if (!static::$enabled || $this->urlMapper === null) {
-            return;
-        }
-
         $originalUrl = $event->getProcessedUrl();
         $mappedUrl = $this->urlMapper->applyMappings($originalUrl);
         if ($mappedUrl !== $originalUrl) {
@@ -145,7 +114,7 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
 
     public function getConfiguration(): PluginConfig
     {
-        return $this->configuration ?? new PluginConfig();
+        return $this->configuration;
     }
 
     public function writeConfiguration(PluginConfig $config): void

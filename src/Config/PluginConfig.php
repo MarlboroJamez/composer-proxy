@@ -11,41 +11,26 @@ use function rtrim;
 
 use const FILTER_VALIDATE_URL;
 
-/**
- * Configuration class for the Composer Proxy plugin
- */
 class PluginConfig
 {
     protected bool $enabled = false;
     protected ?string $url;
 
-    /**
-     * @return bool
-     */
     public function isEnabled(): bool
     {
         return $this->enabled;
     }
 
-    /**
-     * @param bool $enabled
-     */
     public function setEnabled(bool $enabled): void
     {
         $this->enabled = $enabled;
     }
 
-    /**
-     * @return string|null
-     */
     public function getURL(): ?string
     {
         return $this->url;
     }
 
-    /**
-     * @param string|null $url
-     */
     public function setURL(?string $url): void
     {
         if ($url === null) {
@@ -55,11 +40,6 @@ class PluginConfig
         }
     }
 
-    /**
-     * Validate the configuration
-     *
-     * @throws RuntimeException
-     */
     public function validate(): void
     {
         // If set, the URL must be valid

@@ -9,9 +9,6 @@ use Molo\ComposerProxy\Plugin;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-/**
- * Command to disable the proxy
- */
 class DisableCommand extends BaseCommand
 {
     protected Plugin $plugin;
@@ -19,14 +16,10 @@ class DisableCommand extends BaseCommand
     public function __construct(Plugin $plugin)
     {
         parent::__construct();
+
         $this->plugin = $plugin;
     }
 
-    /**
-     * Configure the command
-     *
-     * @return void
-     */
     protected function configure(): void
     {
         $this
@@ -34,13 +27,6 @@ class DisableCommand extends BaseCommand
             ->setDescription('Disables the Composer proxy plugin');
     }
 
-    /**
-     * Execute the command
-     *
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     * @return int
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         // Update configuration

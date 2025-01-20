@@ -13,9 +13,6 @@ use function rtrim;
 use function sprintf;
 use function trim;
 
-/**
- * Handles URL mapping and transformation for package downloads
- */
 class UrlMapper
 {
     private const GITHUB_REGEX = '#^https://api.github.com/repos/(?<package>.+)/zipball/(?<hash>[0-9a-f]+)$#i';
@@ -36,8 +33,6 @@ class UrlMapper
     }
 
     /**
-     * Transform a URL using mirror mappings
-     *
      * @param non-empty-string $url
      * @return non-empty-string
      */
@@ -64,8 +59,6 @@ class UrlMapper
     }
 
     /**
-     * Apply GitHub API URL shortcut
-     *
      * @param non-empty-string $url
      * @return non-empty-string
      */

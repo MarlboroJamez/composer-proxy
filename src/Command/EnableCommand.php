@@ -17,6 +17,7 @@ class EnableCommand extends BaseCommand
     public function __construct(Plugin $plugin)
     {
         parent::__construct();
+
         $this->plugin = $plugin;
     }
 
@@ -25,16 +26,13 @@ class EnableCommand extends BaseCommand
         $this
             ->setName('molo:proxy-enable')
             ->setDescription('Enables the Composer proxy plugin')
-            ->addArgument('url', InputArgument::OPTIONAL, 'Sets the URL to your proxy instance');
+            ->addArgument('url', InputArgument::OPTIONAL, 'Sets the URL to your Composer proxy instance');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $inputAdapter = new InputInterfaceAdapter($input);
         $url = $inputAdapter->getStringArgument('url');
-        if ($url !== null) {
-            $output->writeln(sprintf('Enabling composer proxy with URL: %s', $url));
-        }
 
         // Update configuration
         $config = $this->plugin->getConfiguration();
