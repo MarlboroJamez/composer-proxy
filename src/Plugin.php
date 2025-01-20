@@ -7,7 +7,7 @@ namespace Molo\ComposerProxy;
 use Composer\Composer;
 use Composer\EventDispatcher\EventSubscriberInterface;
 use Composer\IO\IOInterface;
-use Composer\Plugin\Capability\CommandProvider as CommandProviderCapability;
+use Composer\Plugin\Capability\CommandProvider as ComposerCommandProvider;
 use Composer\Plugin\Capable;
 use Composer\Plugin\PluginInterface;
 use Composer\Plugin\PreFileDownloadEvent;
@@ -16,11 +16,16 @@ use LogicException;
 use Molo\ComposerProxy\Command\CommandProvider;
 use Molo\ComposerProxy\Config\PluginConfig;
 use Molo\ComposerProxy\Config\PluginConfigReader;
-use Molo\ComposerProxy\Config\PluginConfigWriter;
 use Molo\ComposerProxy\Config\RemoteConfig;
 use Molo\ComposerProxy\Http\ProxyHttpDownloader;
 use Molo\ComposerProxy\Url\UrlMapper;
-use RuntimeException;
+
+use function array_key_exists;
+use function file_get_contents;
+use function is_array;
+use function json_decode;
+use function rtrim;
+use function sprintf;
 
 class Plugin implements PluginInterface, EventSubscriberInterface, Capable
 {
@@ -90,34 +95,34 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
     public static function getSubscribedEvents(): array
     {
         return [
-            'pre-file-download' => ['onPreFileDownload', 0],
+            'pre-file-download' => [
+                ['onPreFileDownload', 0]
+            ],
         ];
     }
 
     public function onPreFileDownload(PreFileDownloadEvent $event): void
     {
-        if (!self::$enabled || $this->urlMapper === null) {
+        if (!static::$enabled || $this->urlMapper === null) {
             return;
         }
 
-        $originalUrl = $event->getProcessedUrl();
-        $newUrl = $this->urlMapper->applyMappings($originalUrl);
-
-        if ($originalUrl !== $newUrl) {
-            $this->io->debug(sprintf('Proxy: Redirecting %s to %s', $originalUrl, $newUrl));
-            $event->setProcessedUrl($newUrl);
+        $processedUrl = $this->urlMapper->getMirroredUrl($event->getProcessedUrl());
+        if ($processedUrl !== null) {
+            $event->setProcessedUrl($processedUrl);
         }
     }
 
     public function getCapabilities(): array
     {
         return [
-            CommandProviderCapability::class => CommandProvider::class,
+            ComposerCommandProvider::class => CommandProvider::class,
         ];
     }
 
     public function deactivate(Composer $composer, IOInterface $io): void
     {
+        static::$enabled = false;
     }
 
     public function uninstall(Composer $composer, IOInterface $io): void
@@ -128,14 +133,14 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
     {
         try {
             $configUrl = sprintf(self::REMOTE_CONFIG_URL, rtrim($url, '/'));
-            $response = file_get_contents($configUrl);
-            if ($response === false) {
-                throw new RuntimeException(sprintf('Failed to download remote config from %s', $configUrl));
+            $data = @file_get_contents($configUrl);
+            if ($data === false) {
+                throw new RuntimeException('Failed to download remote configuration');
             }
 
-            $data = json_decode($response, true);
+            $data = json_decode($data, true);
             if (!is_array($data)) {
-                throw new RuntimeException('Invalid JSON in remote config');
+                throw new RuntimeException('Invalid remote configuration format');
             }
 
             return RemoteConfig::fromArray($data);
