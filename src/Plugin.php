@@ -16,16 +16,17 @@ use LogicException;
 use Molo\ComposerProxy\Command\CommandProvider;
 use Molo\ComposerProxy\Config\PluginConfig;
 use Molo\ComposerProxy\Config\PluginConfigReader;
+use Molo\ComposerProxy\Config\PluginConfigWriter;
 use Molo\ComposerProxy\Config\RemoteConfig;
 use Molo\ComposerProxy\Http\ProxyHttpDownloader;
 use Molo\ComposerProxy\Url\UrlMapper;
+use RuntimeException;
+use UnexpectedValueException;
 
-use function array_key_exists;
-use function file_get_contents;
 use function is_array;
-use function json_decode;
-use function rtrim;
 use function sprintf;
+
+use const PHP_INT_MAX;
 
 class Plugin implements PluginInterface, EventSubscriberInterface, Capable
 {
@@ -46,6 +47,11 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
         $this->io = $io;
 
         $this->initialize();
+    }
+
+    public function deactivate(Composer $composer, IOInterface $io): void
+    {
+        static::$enabled = false;
     }
 
     private function initialize(): void
@@ -92,8 +98,25 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
         );
     }
 
+    public function uninstall(Composer $composer, IOInterface $io): void
+    {
+    }
+
+    public function getCapabilities(): array
+    {
+        return [
+            ComposerCommandProvider::class => [
+                'class' => CommandProvider::class,
+                'plugin' => $this,
+            ],
+        ];
+    }
+
     public static function getSubscribedEvents(): array
     {
+        if (!static::$enabled) {
+            return [];
+        }
         return [
             'pre-file-download' => [
                 ['onPreFileDownload', 0]
@@ -107,50 +130,16 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
             return;
         }
 
-        $processedUrl = $this->urlMapper->getMirroredUrl($event->getProcessedUrl());
-        if ($processedUrl !== null) {
-            $event->setProcessedUrl($processedUrl);
+        $originalUrl = $event->getProcessedUrl();
+        $mappedUrl = $this->urlMapper->applyMappings($originalUrl);
+        if ($mappedUrl !== $originalUrl) {
+            $this->io->write(
+                sprintf('%s(url=%s): mapped to %s', __METHOD__, $originalUrl, $mappedUrl),
+                true,
+                IOInterface::DEBUG
+            );
         }
-    }
-
-    public function getCapabilities(): array
-    {
-        return [
-            ComposerCommandProvider::class => [
-                'class' => CommandProvider::class,
-                'plugin' => $this,
-            ],
-        ];
-    }
-
-    public function deactivate(Composer $composer, IOInterface $io): void
-    {
-        static::$enabled = false;
-    }
-
-    public function uninstall(Composer $composer, IOInterface $io): void
-    {
-    }
-
-    protected function getRemoteConfig(string $url): RemoteConfig
-    {
-        try {
-            $configUrl = sprintf(self::REMOTE_CONFIG_URL, rtrim($url, '/'));
-            $data = @file_get_contents($configUrl);
-            if ($data === false) {
-                throw new RuntimeException('Failed to download remote configuration');
-            }
-
-            $data = json_decode($data, true);
-            if (!is_array($data)) {
-                throw new RuntimeException('Invalid remote configuration format');
-            }
-
-            return RemoteConfig::fromArray($data);
-        } catch (Exception $e) {
-            $this->io->debug(sprintf('Failed to load remote config: %s', $e->getMessage()));
-            throw $e;
-        }
+        $event->setProcessedUrl($mappedUrl);
     }
 
     public function getConfiguration(): PluginConfig
@@ -160,24 +149,24 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
 
     public function writeConfiguration(PluginConfig $config): void
     {
-        try {
-            $config->validate();
-            
-            $data = [
-                'enabled' => $config->isEnabled(),
-                'url' => $config->getURL(),
-            ];
+        $writer = new PluginConfigWriter($config);
+        $writer->write($this->configPath);
+    }
 
-            $configPath = sprintf('%s/%s', $this->composer->getConfig()->get('home'), static::CONFIG_FILE);
-            if (file_put_contents($configPath, json_encode($data, JSON_PRETTY_PRINT)) === false) {
-                throw new RuntimeException('Failed to write configuration');
-            }
-
-            $this->configuration = $config;
-            static::$enabled = $config->isEnabled();
-        } catch (Exception $e) {
-            $this->io->writeError(sprintf('<error>Failed to write configuration: %s</error>', $e->getMessage()));
-            throw $e;
+    protected function getRemoteConfig(string $url): RemoteConfig
+    {
+        $httpDownloader = $this->composer->getLoop()->getHttpDownloader();
+        $remoteConfigUrl = sprintf(static::REMOTE_CONFIG_URL, $url);
+        $response = $httpDownloader->get($remoteConfigUrl);
+        if ($response->getStatusCode() !== 200) {
+            throw new RuntimeException(
+                sprintf('Unexpected status code %d for URL %s', $response->getStatusCode(), $remoteConfigUrl)
+            );
         }
+        $remoteConfigData = $response->decodeJson();
+        if (!is_array($remoteConfigData)) {
+            throw new UnexpectedValueException('Remote configuration is formatted incorrectly');
+        }
+        return RemoteConfig::fromArray($remoteConfigData);
     }
 }

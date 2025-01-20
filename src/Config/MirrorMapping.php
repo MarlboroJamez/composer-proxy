@@ -6,6 +6,10 @@ namespace Molo\ComposerProxy\Config;
 
 use UnexpectedValueException;
 
+use function array_key_exists;
+use function rtrim;
+use function sprintf;
+
 class MirrorMapping
 {
     protected string $url;
@@ -14,13 +18,13 @@ class MirrorMapping
     /**
      * @param array{url?: string, path?: string} $data
      */
-    public static function fromArray(array $data): self
+    public static function fromArray(array $data): MirrorMapping
     {
         if (!array_key_exists('url', $data) || !array_key_exists('path', $data)) {
             throw new UnexpectedValueException('Missing `url` or `path` key in mirror mapping');
         }
 
-        $mapping = new self();
+        $mapping = new MirrorMapping();
         $mapping->url = $data['url'];
         $mapping->path = $data['path'];
         return $mapping;

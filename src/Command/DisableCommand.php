@@ -31,8 +31,7 @@ class DisableCommand extends BaseCommand
     {
         $this
             ->setName('molo:proxy-disable')
-            ->setDescription('Disables the Composer proxy plugin')
-            ->setHelp('This command disables the composer proxy');
+            ->setDescription('Disables the Composer proxy plugin');
     }
 
     /**
@@ -51,7 +50,7 @@ class DisableCommand extends BaseCommand
         // Write new configuration
         $this->plugin->writeConfiguration($config);
 
-        $output->writeln('Composer proxy is now <info>disabled</info>.');
+        $output->writeln('Composer proxy is now <warning>disabled</warning>.');
         return 0;
     }
 }

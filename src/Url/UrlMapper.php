@@ -6,6 +6,13 @@ namespace Molo\ComposerProxy\Url;
 
 use Molo\ComposerProxy\Config\MirrorMapping;
 
+use function ltrim;
+use function preg_match;
+use function preg_quote;
+use function rtrim;
+use function sprintf;
+use function trim;
+
 /**
  * Handles URL mapping and transformation for package downloads
  */
@@ -25,14 +32,14 @@ class UrlMapper
     public function __construct(string $rootUrl, array $mappings)
     {
         $this->mappings = $mappings;
-        $this->rootUrl = rtrim($rootUrl, '/');
+        $this->rootUrl = $rootUrl;
     }
 
     /**
      * Transform a URL using mirror mappings
      *
-     * @param string $url
-     * @return string
+     * @param non-empty-string $url
+     * @return non-empty-string
      */
     public function applyMappings(string $url): string
     {
@@ -40,37 +47,35 @@ class UrlMapper
 
         foreach ($this->mappings as $mapping) {
             $prefix = $mapping->getNormalizedUrl();
-            $regex = sprintf('#^https?:%s(?<path>.+)$#i', preg_quote($prefix, '#'));
+            $regex = sprintf('#^https?:%s(?<path>.+)$#i', preg_quote($prefix));
             $matches = [];
             if (preg_match($regex, $patchedUrl, $matches) === 1) {
-                return sprintf(
+                $patchedUrl = sprintf(
                     '%s/%s/%s',
-                    $this->rootUrl,
+                    rtrim($this->rootUrl, '/'),
                     trim($mapping->getPath(), '/'),
                     ltrim($matches['path'], '/')
                 );
+                break;
             }
         }
 
-        // If no mirror mapping matches, return original URL
-        return $url;
+        return $patchedUrl;
     }
 
     /**
      * Apply GitHub API URL shortcut
      *
-     * @param string $url
-     * @return string
+     * @param non-empty-string $url
+     * @return non-empty-string
      */
-    private function applyGitHubShortcut(string $url): string
+    protected function applyGitHubShortcut(string $url): string
     {
         $matches = [];
         if (preg_match(self::GITHUB_REGEX, $url, $matches) === 1) {
-            return sprintf(
-                'https://codeload.github.com/%s/legacy.zip/%s',
-                $matches['package'],
-                $matches['hash']
-            );
+            $package = $matches['package'];
+            $hash = $matches['hash'];
+            return sprintf('https://codeload.github.com/%s/legacy.zip/%s', $package, $hash);
         }
         return $url;
     }

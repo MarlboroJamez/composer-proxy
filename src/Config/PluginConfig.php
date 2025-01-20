@@ -17,7 +17,7 @@ use const FILTER_VALIDATE_URL;
 class PluginConfig
 {
     protected bool $enabled = false;
-    protected ?string $url = null;
+    protected ?string $url;
 
     /**
      * @return bool
@@ -69,7 +69,7 @@ class PluginConfig
 
         // If enabled, a URL must also be set
         if ($this->enabled && ($this->url === null)) {
-            throw new RuntimeException('No URL was set for this plugin');
+            throw new RuntimeException('A URL must be set for this plugin to be enabled');
         }
     }
 }

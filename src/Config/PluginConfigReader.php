@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 namespace Molo\ComposerProxy\Config;
 
-use RuntimeException;
+use Molo\ComposerProxy\Exception\IOException;
+
+use function array_key_exists;
+use function file_get_contents;
+use function is_array;
+use function is_readable;
+use function json_decode;
 
 /**
  * Reads plugin configuration from the filesystem
@@ -27,22 +33,22 @@ class PluginConfigReader
     }
 
     /**
-     * @throws RuntimeException
+     * @throws IOException
      */
     public function read(string $path): PluginConfig
     {
         if (!is_readable($path)) {
-            throw new RuntimeException('Unable to read configuration');
+            throw new IOException('Unable to read configuration');
         }
 
         $data = file_get_contents($path);
         if ($data === false) {
-            throw new RuntimeException('Failed to read configuration');
+            throw new IOException('Failed to read configuration');
         }
 
         $data = json_decode($data, true);
         if (!is_array($data)) {
-            throw new RuntimeException('Could not decode configuration JSON');
+            throw new IOException('Could not decode configuration JSON');
         }
 
         return $this->getPluginConfigForPayload($data);
@@ -52,7 +58,7 @@ class PluginConfigReader
     {
         try {
             return $this->read($path);
-        } catch (RuntimeException $e) {
+        } catch (IOException $e) {
             return new PluginConfig();
         }
     }

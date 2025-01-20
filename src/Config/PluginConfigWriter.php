@@ -4,42 +4,54 @@ declare(strict_types=1);
 
 namespace Molo\ComposerProxy\Config;
 
-use Composer\Composer;
-use Composer\Util\Filesystem;
+use RuntimeException;
+
+use function dirname;
+use function file_put_contents;
+use function is_dir;
+use function json_encode;
+use function mkdir;
+use function sprintf;
+
+use const JSON_PRETTY_PRINT;
 
 /**
  * Writes plugin configuration to the filesystem
  */
 class PluginConfigWriter
 {
-    private const CONFIG_FILENAME = 'composer-proxy.json';
-    private Filesystem $filesystem;
-    private string $configPath;
+    protected PluginConfig $config;
 
     /**
-     * @param Composer $composer
+     * @param PluginConfig $config
      */
-    public function __construct(Composer $composer)
+    public function __construct(PluginConfig $config)
     {
-        $this->filesystem = new Filesystem();
-        $this->configPath = $composer->getConfig()->get('home') . '/' . self::CONFIG_FILENAME;
+        $this->config = $config;
     }
 
     /**
      * Write configuration to file
      *
-     * @param PluginConfig $config
+     * @param string $path
      * @return void
      */
-    public function write(PluginConfig $config): void
+    public function write(string $path): void
     {
-        $this->filesystem->ensureDirectoryExists(dirname($this->configPath));
-        
+        $this->config->validate();
+
+        $configDir = dirname($path);
+        if (!is_dir($configDir) && !mkdir($configDir, 0777, true)) {
+            throw new RuntimeException(sprintf('Failed to create directory %s', $configDir));
+        }
+
         $data = [
-            'enabled' => $config->isEnabled(),
-            'proxyUrl' => $config->getProxyUrl(),
+            'enabled' => $this->config->isEnabled(),
+            'url' => $this->config->getURL(),
         ];
-        
-        file_put_contents($this->configPath, json_encode($data, JSON_PRETTY_PRINT));
+
+        if (file_put_contents($path, json_encode($data, JSON_PRETTY_PRINT)) === false) {
+            throw new RuntimeException(sprintf('Failed to write configuration to %s', $path));
+        }
     }
 }

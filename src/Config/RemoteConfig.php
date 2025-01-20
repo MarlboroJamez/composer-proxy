@@ -6,6 +6,8 @@ namespace Molo\ComposerProxy\Config;
 
 use UnexpectedValueException;
 
+use function array_key_exists;
+
 /**
  * Handles remote configuration from the Composer Proxy server
  */
@@ -22,19 +24,18 @@ class RemoteConfig
      * @param array{mirrors?: array{url?: string, path?: string}[]} $data
      * @return self
      */
-    public static function fromArray(array $data): self
+    public static function fromArray(array $data): RemoteConfig
     {
+        $config = new RemoteConfig();
+
         if (!array_key_exists('mirrors', $data)) {
             throw new UnexpectedValueException('Missing `mirrors` key in data');
         }
-
-        $instance = new self();
-        
         foreach ($data['mirrors'] as $mappingData) {
-            $instance->addMirror(MirrorMapping::fromArray($mappingData));
+            $config->addMirror(MirrorMapping::fromArray($mappingData));
         }
 
-        return $instance;
+        return $config;
     }
 
     public function addMirror(MirrorMapping $mapping): void
