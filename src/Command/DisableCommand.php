@@ -5,16 +5,23 @@ declare(strict_types=1);
 namespace Molo\ComposerProxy\Command;
 
 use Composer\Command\BaseCommand;
+use Molo\ComposerProxy\Plugin;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Molo\ComposerProxy\Config\PluginConfig;
-use Molo\ComposerProxy\Plugin;
 
 /**
  * Command to disable the proxy
  */
 class DisableCommand extends BaseCommand
 {
+    protected Plugin $plugin;
+
+    public function __construct(Plugin $plugin)
+    {
+        parent::__construct();
+        $this->plugin = $plugin;
+    }
+
     /**
      * Configure the command
      *
@@ -22,8 +29,9 @@ class DisableCommand extends BaseCommand
      */
     protected function configure(): void
     {
-        $this->setName('molo:proxy-disable')
-            ->setDescription('Disable the composer proxy')
+        $this
+            ->setName('molo:proxy-disable')
+            ->setDescription('Disables the Composer proxy plugin')
             ->setHelp('This command disables the composer proxy');
     }
 
@@ -36,43 +44,14 @@ class DisableCommand extends BaseCommand
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $composer = $this->getComposer();
-        $plugin = $this->getPlugin();
-        
-        if (!$plugin) {
-            $output->writeln('<error>Could not find the composer proxy plugin</error>');
-            return 1;
-        }
-
-        $config = $plugin->getConfig() ?? new PluginConfig();
+        // Update configuration
+        $config = $this->plugin->getConfiguration();
         $config->setEnabled(false);
 
-        if (!$plugin->setConfig($config)) {
-            $output->writeln('<error>Failed to save configuration</error>');
-            return 1;
-        }
+        // Write new configuration
+        $this->plugin->writeConfiguration($config);
 
-        $output->writeln('<info>Composer proxy has been disabled.</info>');
+        $output->writeln('Composer proxy is now <info>disabled</info>.');
         return 0;
-    }
-
-    /**
-     * Get the plugin instance
-     *
-     * @return Plugin|null
-     */
-    private function getPlugin(): ?Plugin
-    {
-        $composer = $this->getComposer();
-        $pluginManager = $composer->getPluginManager();
-        $plugins = $pluginManager->getPlugins();
-
-        foreach ($plugins as $plugin) {
-            if ($plugin instanceof Plugin) {
-                return $plugin;
-            }
-        }
-
-        return null;
     }
 }

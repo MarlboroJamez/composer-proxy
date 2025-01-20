@@ -116,7 +116,10 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
     public function getCapabilities(): array
     {
         return [
-            ComposerCommandProvider::class => CommandProvider::class,
+            ComposerCommandProvider::class => [
+                'class' => CommandProvider::class,
+                'plugin' => $this,
+            ],
         ];
     }
 
