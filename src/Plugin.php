@@ -11,6 +11,7 @@ use Composer\Plugin\Capability\CommandProvider as ComposerCommandProvider;
 use Composer\Plugin\Capable;
 use Composer\Plugin\PluginInterface;
 use Composer\Plugin\PreFileDownloadEvent;
+use Composer\Util\HttpDownloader;
 use Exception;
 use LogicException;
 use Molo\ComposerProxy\Command\CommandProvider;
@@ -19,7 +20,6 @@ use Molo\ComposerProxy\Config\PluginConfig;
 use Molo\ComposerProxy\Config\PluginConfigReader;
 use Molo\ComposerProxy\Config\PluginConfigWriter;
 use Molo\ComposerProxy\Config\RemoteConfig;
-use Molo\ComposerProxy\Http\ParallelProxyDownloader;
 use Molo\ComposerProxy\Url\UrlMapper;
 use RuntimeException;
 use Symfony\Component\Console\Output\ConsoleOutput;
@@ -41,7 +41,7 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
     protected string $configPath;
     protected PluginConfig $configuration;
     protected UrlMapper $urlMapper;
-    protected ?ParallelProxyDownloader $downloader = null;
+    protected ?HttpDownloader $httpDownloader = null;
     protected ?OutputInterface $output = null;
 
     public function activate(Composer $composer, IOInterface $io): void
@@ -49,15 +49,13 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
         $this->composer = $composer;
         $this->io = $io;
         $this->output = new ConsoleOutput();
+        $this->httpDownloader = $composer->getLoop()->getHttpDownloader();
 
         $this->initialize();
     }
 
     public function deactivate(Composer $composer, IOInterface $io): void
     {
-        if ($this->downloader !== null) {
-            $this->downloader->wait();
-        }
         static::$enabled = false;
     }
 
@@ -94,24 +92,10 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
                 'gitlab-protocol' => 'https',
             ]
         ]);
-
-        // Create and configure the parallel downloader
-        $this->downloader = new ParallelProxyDownloader(
-            $this->urlMapper,
-            $this->io,
-            $this->composer->getConfig(),
-            ['ssl' => ['verify_peer' => true]]
-        );
-
-        // Replace the HTTP downloader
-        $this->composer->getLoop()->setHttpDownloader($this->downloader);
     }
 
     public function uninstall(Composer $composer, IOInterface $io): void
     {
-        if ($this->downloader !== null) {
-            $this->downloader->wait();
-        }
     }
 
     public function getCapabilities(): array
@@ -162,17 +146,12 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
 
     protected function getRemoteConfig(string $url): RemoteConfig
     {
-        if ($this->downloader === null) {
-            $this->downloader = new ParallelProxyDownloader(
-                $this->urlMapper ?? new UrlMapper($url, []),
-                $this->io,
-                $this->composer->getConfig(),
-                ['ssl' => ['verify_peer' => true]]
-            );
+        if ($this->httpDownloader === null) {
+            throw new RuntimeException('HTTP downloader not initialized');
         }
 
         $remoteConfigUrl = sprintf(static::REMOTE_CONFIG_URL, $url);
-        $response = $this->downloader->get($remoteConfigUrl);
+        $response = $this->httpDownloader->get($remoteConfigUrl);
         if ($response->getStatusCode() !== 200) {
             throw new RuntimeException(
                 sprintf('Unexpected status code %d for URL %s', $response->getStatusCode(), $remoteConfigUrl)
