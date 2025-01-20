@@ -77,21 +77,21 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
             throw new LogicException('Proxy enabled but no URL set');
         }
 
-        // Check and report authentication status
-        $options = $this->authConfig?->getAuthOptions($url) ?? [];
-        if (!empty($options)) {
-            $this->io->write('<info>Composer Proxy:</info> Successfully authenticated');
-        } else {
-            $this->io->writeError(
-                sprintf(
-                    '<warning>Composer Proxy:</warning> Authentication required. Please add credentials to auth.json for %s',
-                    parse_url($url, PHP_URL_HOST)
-                )
-            );
-        }
-
         try {
             $remoteConfig = $this->getRemoteConfig($url);
+            
+            // Show proxy status message
+            if ($this->io->isVerbose()) {
+                $authStatus = $this->authConfig->hasAuthFor($url) ? 
+                    '<info>✓ authenticated</info>' : 
+                    '<comment>! not authenticated</comment>';
+                
+                $this->io->write(sprintf(
+                    '  <info>Composer Proxy:</info> %s [%s]',
+                    $url,
+                    $authStatus
+                ));
+            }
         } catch (Exception $e) {
             $this->io->writeError(sprintf('Failed to retrieve remote config: %s', $e->getMessage()));
             static::$enabled = false;
@@ -149,11 +149,13 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
                 }
             }
 
-            $this->io->write(
-                sprintf('Composer Proxy: Mapped %s', parse_url($mappedUrl, PHP_URL_HOST)),
-                true,
-                IOInterface::DEBUG
-            );
+            if ($this->io->isVeryVerbose()) {
+                $this->io->write(
+                    sprintf('  <info>Proxy:</info> %s → %s', $originalUrl, $mappedUrl),
+                    true,
+                    IOInterface::VERBOSE
+                );
+            }
         }
         
         $event->setProcessedUrl($mappedUrl);

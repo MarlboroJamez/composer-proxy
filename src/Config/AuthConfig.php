@@ -30,12 +30,8 @@ class AuthConfig
         
         if (file_exists($projectAuthFile)) {
             $this->projectAuth = json_decode(file_get_contents($projectAuthFile), true);
-            $this->authSource = 'local';
-            $this->io->write(
-                '<info>Composer Proxy:</info> Found credentials in auth.json',
-                true,
-                IOInterface::VERBOSE
-            );
+            $this->authSource = 'project';
+            $this->io->write('  <info>✓</info> Using authentication from project auth.json', true, IOInterface::VERBOSE);
             return;
         }
 
@@ -46,15 +42,11 @@ class AuthConfig
         if (file_exists($globalAuthFile)) {
             $this->projectAuth = json_decode(file_get_contents($globalAuthFile), true);
             $this->authSource = 'global';
-            $this->io->write(
-                '<info>Composer Proxy:</info> Found credentials in global auth.json',
-                true,
-                IOInterface::VERBOSE
-            );
+            $this->io->write('  <info>✓</info> Using authentication from global auth.json', true, IOInterface::VERBOSE);
         }
     }
 
-    private function getAuthHeaders(string $url): array
+    public function getAuthHeaders(string $url): array
     {
         $headers = [];
         $host = parse_url($url, PHP_URL_HOST);
@@ -72,11 +64,14 @@ class AuthConfig
                     base64_encode($auth['username'] . ':' . $auth['password'])
                 );
                 
-                $this->io->write(
-                    sprintf('<info>Composer Proxy:</info> Using credentials for %s', $host),
-                    true,
-                    IOInterface::DEBUG
-                );
+                if ($this->io->isVeryVerbose()) {
+                    $this->io->write(sprintf(
+                        '  <info>✓</info> Using %s credentials for %s (username: %s)',
+                        $this->authSource,
+                        $host,
+                        $auth['username']
+                    ), true, IOInterface::VERBOSE);
+                }
                 
                 return $headers;
             }
@@ -92,12 +87,21 @@ class AuthConfig
                     base64_encode($auth['username'] . ':' . $auth['password'])
                 );
                 
-                $this->io->write(
-                    sprintf('<info>Composer Proxy:</info> Using credentials for %s', $host),
-                    true,
-                    IOInterface::DEBUG
-                );
+                if ($this->io->isVeryVerbose()) {
+                    $this->io->write(sprintf(
+                        '  <info>✓</info> Using composer config credentials for %s (username: %s)',
+                        $host,
+                        $auth['username']
+                    ), true, IOInterface::VERBOSE);
+                }
             }
+        }
+
+        if (empty($headers) && $this->io->isVeryVerbose()) {
+            $this->io->write(sprintf(
+                '  <warning>!</warning> No authentication found for %s',
+                $host
+            ), true, IOInterface::VERBOSE);
         }
 
         return $headers;
@@ -115,5 +119,16 @@ class AuthConfig
                 'header' => $headers
             ]
         ];
+    }
+
+    public function hasAuthFor(string $url): bool
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+        if (!$host) {
+            return false;
+        }
+
+        return isset($this->projectAuth['http-basic'][$host]) || 
+               isset($this->config->get('http-basic')[$host]);
     }
 }
