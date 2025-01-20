@@ -10,12 +10,12 @@
         }
     ],
     "require": {
-        "php": "^7.4 || ^8.0",
-        "composer-plugin-api": "^2.0"
+        "php": "^8.1",
+        "composer-plugin-api": "^2.3",
+        "composer/composer": "^2.5"
     },
     "require-dev": {
-        "composer/composer": "^2.0",
-        "phpunit/phpunit": "^9.0",
+        "phpunit/phpunit": "^10.0",
         "squizlabs/php_codesniffer": "^3.0"
     },
     "autoload": {
@@ -29,12 +29,15 @@
         }
     },
     "extra": {
-        "class": "Molo\\ComposerProxy\\Plugin"
+        "class": "Molo\\ComposerProxy\\Plugin",
+        "plugin-modifies-downloads": true,
+        "plugin-modifies-install-path": false,
+        "plugin-modifies-repositories": true
     },
-    "repositories": {
-        "local": {
-            "type": "path",
-            "url": "."
-        }
+    "config": {
+        "allow-plugins": {
+            "molo/composer-proxy": true
+        },
+        "sort-packages": true
     }
 }
