@@ -12,63 +12,61 @@ class AuthConfig
 {
     private ComposerConfig $config;
     private IOInterface $io;
+    private ?array $projectAuth = null;
 
     public function __construct(ComposerConfig $config, IOInterface $io)
     {
         $this->config = $config;
         $this->io = $io;
+        $this->loadProjectAuth();
     }
 
-    public function getAuthHeaders(string $url): array
+    private function loadProjectAuth(): void
     {
-        $headers = [];
-        
-        // Get authentication configuration
-        $authConfig = $this->config->get('http-basic') ?? [];
-        
-        // Try to find credentials for the given URL
-        $host = parse_url($url, PHP_URL_HOST);
-        if ($host && isset($authConfig[$host])) {
-            $auth = $authConfig[$host];
-            if (!empty($auth['username']) && !empty($auth['password'])) {
-                $headers[] = sprintf(
-                    'Authorization: Basic %s',
-                    base64_encode($auth['username'] . ':' . $auth['password'])
-                );
-            }
-        }
-
-        return $headers;
-    }
-
-    public function configureAuthentication(string $url): void
-    {
-        $host = parse_url($url, PHP_URL_HOST);
-        if (!$host) {
-            return;
-        }
-
-        // Check if we already have credentials
-        $authConfig = $this->config->get('http-basic') ?? [];
-        if (isset($authConfig[$host])) {
-            return;
-        }
-
         // Try to load auth.json from the project directory
         $projectDir = getcwd();
         $authFile = $projectDir . '/auth.json';
         
         if (file_exists($authFile)) {
-            $auth = json_decode(file_get_contents($authFile), true);
-            if (isset($auth['http-basic'][$host])) {
-                $this->config->merge([
-                    'config' => [
-                        'http-basic' => [
-                            $host => $auth['http-basic'][$host]
-                        ]
+            $this->projectAuth = json_decode(file_get_contents($authFile), true);
+        }
+    }
+
+    public function getAuthOptions(string $url): array
+    {
+        $options = [];
+        $host = parse_url($url, PHP_URL_HOST);
+        
+        if (!$host) {
+            return $options;
+        }
+
+        // Try project auth.json first
+        if ($this->projectAuth && isset($this->projectAuth['http-basic'][$host])) {
+            $auth = $this->projectAuth['http-basic'][$host];
+            if (!empty($auth['username']) && !empty($auth['password'])) {
+                $options['http'] = [
+                    'header' => [
+                        'Authorization: Basic ' . base64_encode($auth['username'] . ':' . $auth['password'])
                     ]
-                ]);
+                ];
+                return $options;
             }
         }
+
+        // Try global auth config
+        $authConfig = $this->config->get('http-basic') ?? [];
+        if (isset($authConfig[$host])) {
+            $auth = $authConfig[$host];
+            if (!empty($auth['username']) && !empty($auth['password'])) {
+                $options['http'] = [
+                    'header' => [
+                        'Authorization: Basic ' . base64_encode($auth['username'] . ':' . $auth['password'])
+                    ]
+                ];
+            }
+        }
+
+        return $options;
     }
 }

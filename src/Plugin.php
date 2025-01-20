@@ -77,9 +77,6 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
             throw new LogicException('Proxy enabled but no URL set');
         }
 
-        // Configure authentication for the proxy URL
-        $this->authConfig?->configureAuthentication($url);
-
         try {
             $remoteConfig = $this->getRemoteConfig($url);
         } catch (Exception $e) {
@@ -131,11 +128,11 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
         $mappedUrl = $this->urlMapper->applyMappings($originalUrl);
         
         if ($mappedUrl !== $originalUrl) {
-            // Add authentication headers if needed
+            // Add authentication options
             if ($this->authConfig !== null) {
-                $headers = $this->authConfig->getAuthHeaders($mappedUrl);
-                foreach ($headers as $header) {
-                    $event->setOption('http', ['header' => [$header]]);
+                $options = $this->authConfig->getAuthOptions($mappedUrl);
+                foreach ($options as $key => $value) {
+                    $event->setOption($key, $value);
                 }
             }
 
@@ -168,13 +165,10 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
 
         $remoteConfigUrl = sprintf(static::REMOTE_CONFIG_URL, $url);
         
-        // Add authentication headers for the remote config request
+        // Add authentication options for the remote config request
         $options = [];
         if ($this->authConfig !== null) {
-            $headers = $this->authConfig->getAuthHeaders($remoteConfigUrl);
-            if (!empty($headers)) {
-                $options['headers'] = $headers;
-            }
+            $options = $this->authConfig->getAuthOptions($remoteConfigUrl);
         }
 
         $response = $this->httpDownloader->get($remoteConfigUrl, $options);
