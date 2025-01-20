@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace Molo\ComposerProxy\Config;
 
+use RuntimeException;
+
 /**
  * Configuration class for the Composer Proxy plugin
  */
 class PluginConfig
 {
     protected bool $enabled = false;
-    protected ?string $proxyUrl = null;
+    protected ?string $url = null;
+    protected ?RemoteConfig $remoteConfig = null;
 
     /**
      * @return bool
@@ -31,63 +34,54 @@ class PluginConfig
     /**
      * @return string|null
      */
-    public function getProxyUrl(): ?string
+    public function getURL(): ?string
     {
-        return $this->proxyUrl;
+        return $this->url;
     }
 
     /**
-     * @param string $proxyUrl
+     * @param string|null $url
      */
-    public function setProxyUrl(string $proxyUrl): void
+    public function setURL(?string $url): void
     {
-        $this->proxyUrl = $proxyUrl;
+        if ($url === null) {
+            $this->url = null;
+        } else {
+            $this->url = rtrim($url, '/');
+        }
     }
 
     /**
-     * @return array
+     * @param RemoteConfig|null $config
      */
-    public function getMirrorMappings(): array
+    public function setRemoteConfig(?RemoteConfig $config): void
     {
-        return [];
+        $this->remoteConfig = $config;
     }
 
     /**
-     * @param array $mirrorMappings
-     * @return self
+     * @return RemoteConfig|null
      */
-    public function setMirrorMappings(array $mirrorMappings): self
+    public function getRemoteConfig(): ?RemoteConfig
     {
-        // This method is not used anywhere in the class, so it's left as is
-        $this->mirrorMappings = $mirrorMappings;
-        return $this;
+        return $this->remoteConfig;
     }
 
     /**
-     * Convert config to array
+     * Validate the configuration
      *
-     * @return array
+     * @throws RuntimeException
      */
-    public function toArray(): array
+    public function validate(): void
     {
-        return [
-            'enabled' => $this->enabled,
-            'proxy_url' => $this->proxyUrl,
-            'mirror_mappings' => $this->getMirrorMappings(),
-        ];
-    }
+        // If set, the URL must be valid
+        if (($this->url !== null) && !filter_var($this->url, FILTER_VALIDATE_URL)) {
+            throw new RuntimeException('Invalid URL was set for this plugin');
+        }
 
-    /**
-     * Create config from array
-     *
-     * @param array $data
-     * @return self
-     */
-    public static function fromArray(array $data): self
-    {
-        $config = new self();
-        $config->setEnabled($data['enabled'] ?? false)
-            ->setProxyUrl($data['proxy_url'] ?? '');
-        return $config;
+        // If enabled, a URL must also be set
+        if ($this->enabled && ($this->url === null)) {
+            throw new RuntimeException('No URL was set for this plugin');
+        }
     }
 }

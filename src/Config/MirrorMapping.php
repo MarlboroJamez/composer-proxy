@@ -16,14 +16,14 @@ class MirrorMapping
      */
     public static function fromArray(array $data): self
     {
-        if (!isset($data['url']) || !isset($data['path'])) {
+        if (!array_key_exists('url', $data) || !array_key_exists('path', $data)) {
             throw new UnexpectedValueException('Missing `url` or `path` key in mirror mapping');
         }
 
-        $instance = new self();
-        $instance->url = $data['url'];
-        $instance->path = $data['path'];
-        return $instance;
+        $mapping = new self();
+        $mapping->url = $data['url'];
+        $mapping->path = $data['path'];
+        return $mapping;
     }
 
     public function getUrl(): string
