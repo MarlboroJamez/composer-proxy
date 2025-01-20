@@ -4,73 +4,8 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "3a03bea68098768184537210099caafb",
-    "packages": [
-        {
-            "name": "gmta/composer-velocita",
-            "version": "6.0.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/gmta/composer-velocita.git",
-                "reference": "dc15df6bdcc26306f380ab247fa502595e85a364"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/gmta/composer-velocita/zipball/dc15df6bdcc26306f380ab247fa502595e85a364",
-                "reference": "dc15df6bdcc26306f380ab247fa502595e85a364",
-                "shasum": ""
-            },
-            "require": {
-                "composer-plugin-api": "^2.0",
-                "ext-json": "*",
-                "php": ">=7.4"
-            },
-            "replace": {
-                "isaac/composer-velocita": "*"
-            },
-            "require-dev": {
-                "composer/composer": "^2.1.9",
-                "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
-                "phpcompatibility/php-compatibility": "^9.3.5",
-                "phpstan/phpstan": "^1.5.3",
-                "slevomat/coding-standard": "^8.14",
-                "symfony/flex": "^2.3.3"
-            },
-            "type": "composer-plugin",
-            "extra": {
-                "class": "GMTA\\Velocita\\Composer\\VelocitaPlugin"
-            },
-            "autoload": {
-                "psr-4": {
-                    "GMTA\\Velocita\\Composer\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Jelle Raaijmakers",
-                    "email": "jelle@gmta.nl"
-                }
-            ],
-            "description": "Fast and reliable Composer package downloads by using Velocita",
-            "keywords": [
-                "availability",
-                "cache",
-                "composer",
-                "performance",
-                "speed",
-                "velocita"
-            ],
-            "support": {
-                "issues": "https://github.com/gmta/composer-velocita/issues",
-                "source": "https://github.com/gmta/composer-velocita/tree/6.0.0"
-            },
-            "time": "2024-04-26T12:59:30+00:00"
-        }
-    ],
+    "content-hash": "233aa04b65a16a823c70ecd549d0d8bb",
+    "packages": [],
     "packages-dev": [
         {
             "name": "composer/ca-bundle",
