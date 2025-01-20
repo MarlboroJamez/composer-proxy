@@ -30,7 +30,7 @@ class AuthConfig
         
         if (file_exists($projectAuthFile)) {
             $auth = json_decode(file_get_contents($projectAuthFile), true);
-            if ($auth && isset($auth['http-basic']) && !empty($auth['http-basic'])) {
+            if ($auth && isset($auth['http-basic'])) {
                 $this->projectAuth = $auth;
                 $this->authSource = 'project';
                 $this->io->write('  <info>✓</info> Using authentication from project auth.json', true, IOInterface::VERBOSE);
@@ -44,7 +44,7 @@ class AuthConfig
         
         if (file_exists($globalAuthFile)) {
             $auth = json_decode(file_get_contents($globalAuthFile), true);
-            if ($auth && isset($auth['http-basic']) && !empty($auth['http-basic'])) {
+            if ($auth && isset($auth['http-basic'])) {
                 $this->projectAuth = $auth;
                 $this->authSource = 'global';
                 $this->io->write('  <info>✓</info> Using authentication from global auth.json', true, IOInterface::VERBOSE);
@@ -62,24 +62,37 @@ class AuthConfig
         }
 
         // Try project auth.json first
-        if ($this->projectAuth && isset($this->projectAuth['http-basic'][$host])) {
-            $auth = $this->projectAuth['http-basic'][$host];
-            if (!empty($auth['username']) && !empty($auth['password'])) {
-                $headers[] = sprintf(
-                    'Authorization: Basic %s',
-                    base64_encode($auth['username'] . ':' . $auth['password'])
-                );
-                
-                if ($this->io->isVeryVerbose()) {
-                    $this->io->write(sprintf(
-                        '  <info>✓</info> Using %s credentials for %s (username: %s)',
-                        $this->authSource,
-                        $host,
-                        $auth['username']
-                    ), true, IOInterface::VERBOSE);
+        if ($this->projectAuth && isset($this->projectAuth['http-basic'])) {
+            // Check for direct host match
+            if (isset($this->projectAuth['http-basic'][$host])) {
+                $auth = $this->projectAuth['http-basic'][$host];
+                if (!empty($auth['username']) && !empty($auth['password'])) {
+                    $headers[] = sprintf(
+                        'Authorization: Basic %s',
+                        base64_encode($auth['username'] . ':' . $auth['password'])
+                    );
+                    return $headers;
                 }
-                
-                return $headers;
+            }
+
+            // Check for packagist credentials (can be used for proxy)
+            if (isset($this->projectAuth['http-basic']['repo.packagist.com'])) {
+                $auth = $this->projectAuth['http-basic']['repo.packagist.com'];
+                if (!empty($auth['username']) && !empty($auth['password'])) {
+                    $headers[] = sprintf(
+                        'Authorization: Basic %s',
+                        base64_encode($auth['username'] . ':' . $auth['password'])
+                    );
+                    
+                    if ($this->io->isVeryVerbose()) {
+                        $this->io->write(sprintf(
+                            '  <info>✓</info> Using packagist credentials for %s',
+                            $host
+                        ), true, IOInterface::VERBOSE);
+                    }
+                    
+                    return $headers;
+                }
             }
         }
 
@@ -92,14 +105,6 @@ class AuthConfig
                     'Authorization: Basic %s',
                     base64_encode($auth['username'] . ':' . $auth['password'])
                 );
-                
-                if ($this->io->isVeryVerbose()) {
-                    $this->io->write(sprintf(
-                        '  <info>✓</info> Using composer config credentials for %s (username: %s)',
-                        $host,
-                        $auth['username']
-                    ), true, IOInterface::VERBOSE);
-                }
             }
         }
 
@@ -128,10 +133,21 @@ class AuthConfig
         }
 
         // Check if we have valid credentials in project auth
-        if ($this->projectAuth && isset($this->projectAuth['http-basic'][$host])) {
-            $auth = $this->projectAuth['http-basic'][$host];
-            if (!empty($auth['username']) && !empty($auth['password'])) {
-                return true;
+        if ($this->projectAuth && isset($this->projectAuth['http-basic'])) {
+            // Check for direct host match
+            if (isset($this->projectAuth['http-basic'][$host])) {
+                $auth = $this->projectAuth['http-basic'][$host];
+                if (!empty($auth['username']) && !empty($auth['password'])) {
+                    return true;
+                }
+            }
+
+            // Check for packagist credentials
+            if (isset($this->projectAuth['http-basic']['repo.packagist.com'])) {
+                $auth = $this->projectAuth['http-basic']['repo.packagist.com'];
+                if (!empty($auth['username']) && !empty($auth['password'])) {
+                    return true;
+                }
             }
         }
 

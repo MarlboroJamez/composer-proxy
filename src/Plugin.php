@@ -85,13 +85,12 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
                 $isAuthenticated = $this->authConfig->hasAuthFor($url);
                 $authStatus = $isAuthenticated ? 
                     '<info>✓ authenticated</info>' : 
-                    '<error>✗ not authenticated</error>';
+                    '<comment>! no credentials found</comment>';
                 
                 $this->io->write(sprintf(
-                    '  <info>Composer Proxy:</info> %s [%s]%s',
+                    '  <info>Composer Proxy:</info> %s [%s]',
                     $url,
-                    $authStatus,
-                    !$isAuthenticated ? "\n  <comment>!</comment> Please ensure auth.json contains credentials for " . parse_url($url, PHP_URL_HOST) : ''
+                    $authStatus
                 ));
             }
         } catch (Exception $e) {
