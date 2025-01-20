@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Molo\ComposerProxy\Config;
 
-use Composer\Composer;
-use Composer\Util\Filesystem;
 use RuntimeException;
 
 /**
@@ -13,21 +11,8 @@ use RuntimeException;
  */
 class PluginConfigReader
 {
-    private const CONFIG_FILENAME = 'composer-proxy.json';
-    private Filesystem $filesystem;
-    private string $configPath;
-
     /**
-     * @param Composer $composer
-     */
-    public function __construct(Composer $composer)
-    {
-        $this->filesystem = new Filesystem();
-        $this->configPath = $composer->getConfig()->get('home') . '/' . self::CONFIG_FILENAME;
-    }
-
-    /**
-     * @param array{enabled?: bool, proxyUrl?: string, url?: string} $payload
+     * @param array{enabled?: bool, url?: string} $payload
      */
     protected function getPluginConfigForPayload(array $payload): PluginConfig
     {
@@ -35,10 +20,8 @@ class PluginConfigReader
         if (array_key_exists('enabled', $payload)) {
             $config->setEnabled($payload['enabled']);
         }
-        if (array_key_exists('proxyUrl', $payload)) {
-            $config->setProxyUrl($payload['proxyUrl']);
-        } elseif (array_key_exists('url', $payload)) {
-            $config->setProxyUrl($payload['url']);
+        if (array_key_exists('url', $payload)) {
+            $config->setURL($payload['url']);
         }
         return $config;
     }
