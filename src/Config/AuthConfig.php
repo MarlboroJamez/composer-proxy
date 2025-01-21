@@ -67,8 +67,8 @@ class AuthConfig
             if (isset($this->projectAuth['http-basic'][$host])) {
                 $auth = $this->projectAuth['http-basic'][$host];
                 if (!empty($auth['username']) && !empty($auth['password'])) {
-                    $headers['Authorization'] = sprintf(
-                        'Basic %s',
+                    $headers[] = sprintf(
+                        'Authorization: Basic %s',
                         base64_encode($auth['username'] . ':' . $auth['password'])
                     );
                     return $headers;
@@ -79,8 +79,8 @@ class AuthConfig
             if (isset($this->projectAuth['http-basic']['repo.packagist.com'])) {
                 $auth = $this->projectAuth['http-basic']['repo.packagist.com'];
                 if (!empty($auth['username']) && !empty($auth['password'])) {
-                    $headers['Authorization'] = sprintf(
-                        'Basic %s',
+                    $headers[] = sprintf(
+                        'Authorization: Basic %s',
                         base64_encode($auth['username'] . ':' . $auth['password'])
                     );
                     
@@ -101,8 +101,8 @@ class AuthConfig
         if (isset($authConfig[$host])) {
             $auth = $authConfig[$host];
             if (!empty($auth['username']) && !empty($auth['password'])) {
-                $headers['Authorization'] = sprintf(
-                    'Basic %s',
+                $headers[] = sprintf(
+                    'Authorization: Basic %s',
                     base64_encode($auth['username'] . ':' . $auth['password'])
                 );
             }

@@ -145,8 +145,8 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
             // Add authentication options
             if ($this->authConfig !== null) {
                 $options = $this->authConfig->getAuthOptions($mappedUrl);
-                if (!empty($options['http'])) {
-                    $event->setTransportOptions($options['http']);
+                foreach ($options as $key => $value) {
+                    $event->setOption($key, $value);
                 }
             }
 
