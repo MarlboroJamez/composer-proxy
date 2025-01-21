@@ -75,30 +75,8 @@ class AuthConfig
         if (!$host) {
             return $headers;
         }
-
-        // Try direct host auth first
-        if ($this->projectAuth && isset($this->projectAuth['http-basic'][$host])) {
-            $auth = $this->projectAuth['http-basic'][$host];
-            if (!empty($auth['username']) && !empty($auth['password'])) {
-                $headers[] = sprintf(
-                    'Authorization: Basic %s',
-                    base64_encode($auth['username'] . ':' . $auth['password'])
-                );
-                
-                if ($this->io->isVeryVerbose()) {
-                    $this->io->write(sprintf(
-                        '  <info>✓</info> Using %s credentials for %s (username: %s)',
-                        $this->authSource,
-                        $host,
-                        $auth['username']
-                    ), true, IOInterface::VERBOSE);
-                }
-                
-                return $headers;
-            }
-        }
-
-        // For proxy requests, try to use packagist credentials
+    
+        // For proxy URLs, use packagist credentials
         if (strpos($host, 'composer-proxy') !== false) {
             $packagistAuth = $this->getPackagistCredentials();
             if ($packagistAuth && !empty($packagistAuth['username']) && !empty($packagistAuth['password'])) {
@@ -109,20 +87,18 @@ class AuthConfig
                 
                 if ($this->io->isVeryVerbose()) {
                     $this->io->write(sprintf(
-                        '  <info>✓</info> Using packagist credentials for proxy %s (username: %s)',
-                        $host,
-                        $packagistAuth['username']
+                        '  <info>✓</info> Using packagist credentials for proxy %s',
+                        $host
                     ), true, IOInterface::VERBOSE);
                 }
                 
                 return $headers;
             }
         }
-
-        // Try global auth config as fallback
-        $authConfig = $this->config->get('http-basic') ?? [];
-        if (isset($authConfig[$host])) {
-            $auth = $authConfig[$host];
+    
+        // For other URLs, use direct host auth
+        if (isset($this->projectAuth['http-basic'][$host])) {
+            $auth = $this->projectAuth['http-basic'][$host];
             if (!empty($auth['username']) && !empty($auth['password'])) {
                 $headers[] = sprintf(
                     'Authorization: Basic %s',
@@ -131,21 +107,14 @@ class AuthConfig
                 
                 if ($this->io->isVeryVerbose()) {
                     $this->io->write(sprintf(
-                        '  <info>✓</info> Using composer config credentials for %s (username: %s)',
-                        $host,
-                        $auth['username']
+                        '  <info>✓</info> Using %s credentials for %s',
+                        $this->authSource,
+                        $host
                     ), true, IOInterface::VERBOSE);
                 }
             }
         }
-
-        if (empty($headers) && $this->io->isVeryVerbose()) {
-            $this->io->write(sprintf(
-                '  <warning>!</warning> No authentication found for %s',
-                $host
-            ), true, IOInterface::VERBOSE);
-        }
-
+    
         return $headers;
     }
 
