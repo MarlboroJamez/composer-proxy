@@ -82,16 +82,14 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
             
             // Show proxy status message
             if ($this->io->isVerbose()) {
-                $isAuthenticated = $this->authConfig->hasAuthFor($url);
-                $authStatus = $isAuthenticated ? 
+                $authStatus = $this->authConfig->hasAuthFor($url) ? 
                     '<info>✓ authenticated</info>' : 
-                    '<error>✗ not authenticated</error>';
+                    '<comment>! not authenticated</comment>';
                 
                 $this->io->write(sprintf(
-                    '  <info>Composer Proxy:</info> %s [%s]%s',
+                    '  <info>Composer Proxy:</info> %s [%s]',
                     $url,
-                    $authStatus,
-                    !$isAuthenticated ? "\n  <comment>!</comment> Please ensure auth.json contains credentials for " . parse_url($url, PHP_URL_HOST) : ''
+                    $authStatus
                 ));
             }
         } catch (Exception $e) {
