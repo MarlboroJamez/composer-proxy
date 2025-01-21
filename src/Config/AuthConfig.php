@@ -120,7 +120,7 @@ class AuthConfig
 
         return [
             'http' => [
-                'header' => $headers
+                'header' => implode("\r\n", $headers) . "\r\n"
             ]
         ];
     }
