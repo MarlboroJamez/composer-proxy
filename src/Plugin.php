@@ -85,12 +85,13 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
                 $isAuthenticated = $this->authConfig->hasAuthFor($url);
                 $authStatus = $isAuthenticated ? 
                     '<info>✓ authenticated</info>' : 
-                    '<comment>! no credentials found</comment>';
+                    '<error>✗ not authenticated</error>';
                 
                 $this->io->write(sprintf(
-                    '  <info>Composer Proxy:</info> %s [%s]',
+                    '  <info>Composer Proxy:</info> %s [%s]%s',
                     $url,
-                    $authStatus
+                    $authStatus,
+                    !$isAuthenticated ? "\n  <comment>!</comment> Please ensure auth.json contains credentials for " . parse_url($url, PHP_URL_HOST) : ''
                 ));
             }
         } catch (Exception $e) {
@@ -145,14 +146,8 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
             // Add authentication options
             if ($this->authConfig !== null) {
                 $options = $this->authConfig->getAuthOptions($mappedUrl);
-                if (!empty($options['http']['header'])) {
-                    $event->setProcessedUrl($mappedUrl);
-                    
-                    if ($event->getType() === 'metadata') {
-                        $transportOptions = $event->getTransportOptions();
-                        $transportOptions['http']['header'] = $options['http']['header'];
-                        $event->setTransportOptions($transportOptions);
-                    }
+                foreach ($options as $key => $value) {
+                    $event->setOption($key, $value);
                 }
             }
 
