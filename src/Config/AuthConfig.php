@@ -10,6 +10,12 @@ use Composer\IO\IOInterface;
 
 class AuthConfig
 {
+    private const PACKAGIST_HOSTS = [
+        'repo.packagist.com',
+        'packagist.com',
+        'packagist.org'
+    ];
+
     private ComposerConfig $config;
     private IOInterface $io;
     private ?array $projectAuth = null;
@@ -46,6 +52,21 @@ class AuthConfig
         }
     }
 
+    private function getPackagistCredentials(): ?array
+    {
+        if (!$this->projectAuth) {
+            return null;
+        }
+
+        foreach (self::PACKAGIST_HOSTS as $host) {
+            if (isset($this->projectAuth['http-basic'][$host])) {
+                return $this->projectAuth['http-basic'][$host];
+            }
+        }
+
+        return null;
+    }
+
     public function getAuthHeaders(string $url): array
     {
         $headers = [];
@@ -55,7 +76,7 @@ class AuthConfig
             return $headers;
         }
 
-        // Try project auth.json first
+        // Try direct host auth first
         if ($this->projectAuth && isset($this->projectAuth['http-basic'][$host])) {
             $auth = $this->projectAuth['http-basic'][$host];
             if (!empty($auth['username']) && !empty($auth['password'])) {
@@ -70,6 +91,27 @@ class AuthConfig
                         $this->authSource,
                         $host,
                         $auth['username']
+                    ), true, IOInterface::VERBOSE);
+                }
+                
+                return $headers;
+            }
+        }
+
+        // For proxy requests, try to use packagist credentials
+        if (strpos($host, 'composer-proxy') !== false) {
+            $packagistAuth = $this->getPackagistCredentials();
+            if ($packagistAuth && !empty($packagistAuth['username']) && !empty($packagistAuth['password'])) {
+                $headers[] = sprintf(
+                    'Authorization: Basic %s',
+                    base64_encode($packagistAuth['username'] . ':' . $packagistAuth['password'])
+                );
+                
+                if ($this->io->isVeryVerbose()) {
+                    $this->io->write(sprintf(
+                        '  <info>✓</info> Using packagist credentials for proxy %s (username: %s)',
+                        $host,
+                        $packagistAuth['username']
                     ), true, IOInterface::VERBOSE);
                 }
                 
@@ -128,7 +170,17 @@ class AuthConfig
             return false;
         }
 
-        return isset($this->projectAuth['http-basic'][$host]) || 
-               isset($this->config->get('http-basic')[$host]);
+        // Check direct host auth
+        if (isset($this->projectAuth['http-basic'][$host])) {
+            return true;
+        }
+
+        // For proxy, check if we have packagist credentials
+        if (strpos($host, 'composer-proxy') !== false && $this->getPackagistCredentials() !== null) {
+            return true;
+        }
+
+        // Check global auth
+        return isset($this->config->get('http-basic')[$host]);
     }
 }
