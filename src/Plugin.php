@@ -144,8 +144,12 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
             // Add authentication options
             if ($this->authConfig !== null) {
                 $options = $this->authConfig->getAuthOptions($mappedUrl);
-                foreach ($options as $key => $value) {
-                    $event->setOption($key, $value);
+                if (!empty($options['http']['header'])) {
+                    $rfs = $event->getRemoteFilesystem();
+                    foreach ($options['http']['header'] as $header) {
+                        list($name, $value) = explode(':', $header, 2);
+                        $rfs->addHeader(trim($name), trim($value));
+                    }
                 }
             }
 
