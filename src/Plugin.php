@@ -145,10 +145,18 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
             if ($this->authConfig !== null) {
                 $options = $this->authConfig->getAuthOptions($mappedUrl);
                 if (!empty($options['http']['header'])) {
-                    $rfs = $event->getRemoteFilesystem();
-                    foreach ($options['http']['header'] as $header) {
-                        list($name, $value) = explode(':', $header, 2);
-                        $rfs->addHeader(trim($name), trim($value));
+                    $event->setProcessedUrl(
+                        $mappedUrl,
+                        $options['http']['header']
+                    );
+                    
+                    if ($this->io->isVeryVerbose()) {
+                        $this->io->write(
+                            sprintf('  <info>Proxy:</info> %s → %s (authenticated)', $originalUrl, $mappedUrl),
+                            true,
+                            IOInterface::VERBOSE
+                        );
+                        return;
                     }
                 }
             }
@@ -160,9 +168,9 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
                     IOInterface::VERBOSE
                 );
             }
+            
+            $event->setProcessedUrl($mappedUrl);
         }
-        
-        $event->setProcessedUrl($mappedUrl);
     }
 
     public function getConfiguration(): PluginConfig
