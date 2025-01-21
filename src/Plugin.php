@@ -196,18 +196,53 @@ class Plugin implements PluginInterface, EventSubscriberInterface, Capable
         $options = [];
         if ($this->authConfig !== null) {
             $options = $this->authConfig->getAuthOptions($remoteConfigUrl);
+            
+            if ($this->io->isVeryVerbose()) {
+                if (!empty($options['http']['header'])) {
+                    $this->io->write(
+                        sprintf('  <info>✓</info> Using authentication for config request: %s', $remoteConfigUrl),
+                        true,
+                        IOInterface::VERBOSE
+                    );
+                } else {
+                    $this->io->write(
+                        sprintf('  <warning>!</warning> No authentication found for config request: %s', $remoteConfigUrl),
+                        true,
+                        IOInterface::VERBOSE
+                    );
+                }
+            }
         }
 
-        $response = $this->httpDownloader->get($remoteConfigUrl, $options);
-        if ($response->getStatusCode() !== 200) {
-            throw new RuntimeException(
-                sprintf('Unexpected status code %d for URL %s', $response->getStatusCode(), $remoteConfigUrl)
-            );
+        try {
+            $response = $this->httpDownloader->get($remoteConfigUrl, $options);
+            if ($response->getStatusCode() !== 200) {
+                throw new RuntimeException(
+                    sprintf('Unexpected status code %d for URL %s', $response->getStatusCode(), $remoteConfigUrl)
+                );
+            }
+            $remoteConfigData = $response->decodeJson();
+            if (!is_array($remoteConfigData)) {
+                throw new UnexpectedValueException('Remote configuration is formatted incorrectly');
+            }
+            return RemoteConfig::fromArray($remoteConfigData);
+        } catch (Exception $e) {
+            // Try without authentication if it fails
+            if (!empty($options)) {
+                $this->io->write(
+                    '  <warning>!</warning> Config request failed with authentication, trying without...',
+                    true,
+                    IOInterface::VERBOSE
+                );
+                $response = $this->httpDownloader->get($remoteConfigUrl);
+                if ($response->getStatusCode() === 200) {
+                    $remoteConfigData = $response->decodeJson();
+                    if (is_array($remoteConfigData)) {
+                        return RemoteConfig::fromArray($remoteConfigData);
+                    }
+                }
+            }
+            throw $e;
         }
-        $remoteConfigData = $response->decodeJson();
-        if (!is_array($remoteConfigData)) {
-            throw new UnexpectedValueException('Remote configuration is formatted incorrectly');
-        }
-        return RemoteConfig::fromArray($remoteConfigData);
     }
 }
