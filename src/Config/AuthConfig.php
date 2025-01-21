@@ -49,6 +49,14 @@ class AuthConfig
             $this->projectAuth = json_decode(file_get_contents($globalAuthFile), true);
             $this->authSource = 'global';
             $this->io->write('  <info>✓</info> Using authentication from global auth.json', true, IOInterface::VERBOSE);
+            return;
+        }
+
+        // Try composer config as fallback
+        $this->projectAuth = ['http-basic' => $this->config->get('http-basic') ?? []];
+        if (!empty($this->projectAuth['http-basic'])) {
+            $this->authSource = 'config';
+            $this->io->write('  <info>✓</info> Using authentication from composer config', true, IOInterface::VERBOSE);
         }
     }
 
@@ -58,9 +66,24 @@ class AuthConfig
             return null;
         }
 
+        // First try http-basic auth
         foreach (self::PACKAGIST_HOSTS as $host) {
             if (isset($this->projectAuth['http-basic'][$host])) {
-                return $this->projectAuth['http-basic'][$host];
+                $auth = $this->projectAuth['http-basic'][$host];
+                if (!empty($auth['username']) && !empty($auth['password'])) {
+                    return $auth;
+                }
+            }
+        }
+
+        // Then try config auth
+        $configAuth = $this->config->get('http-basic') ?? [];
+        foreach (self::PACKAGIST_HOSTS as $host) {
+            if (isset($configAuth[$host])) {
+                $auth = $configAuth[$host];
+                if (!empty($auth['username']) && !empty($auth['password'])) {
+                    return $auth;
+                }
             }
         }
 
@@ -93,6 +116,13 @@ class AuthConfig
                 }
                 
                 return $headers;
+            } else {
+                if ($this->io->isVeryVerbose()) {
+                    $this->io->write(sprintf(
+                        '  <warning>!</warning> No packagist credentials found for proxy %s',
+                        $host
+                    ), true, IOInterface::VERBOSE);
+                }
             }
         }
     
@@ -139,17 +169,11 @@ class AuthConfig
             return false;
         }
 
-        // Check direct host auth
-        if (isset($this->projectAuth['http-basic'][$host])) {
-            return true;
+        if (strpos($host, 'composer-proxy') !== false) {
+            return $this->getPackagistCredentials() !== null;
         }
 
-        // For proxy, check if we have packagist credentials
-        if (strpos($host, 'composer-proxy') !== false && $this->getPackagistCredentials() !== null) {
-            return true;
-        }
-
-        // Check global auth
-        return isset($this->config->get('http-basic')[$host]);
+        return isset($this->projectAuth['http-basic'][$host]) || 
+               isset($this->config->get('http-basic')[$host]);
     }
 }
